@@ -16,19 +16,25 @@ async function scrapePedidos() {
   await page.goto("https://muebles-tiempo.web.app/");
   await page.fill('#loggedoutEmail', EMAIL);
   await page.fill('#loggedoutPass', PASSWORD);
-  await page.click('button[onclick="loginWithEmailAndPassword()"]');
 
-  // Paso 2: Esperar que desaparezca login y aparezca el botón de ventas
+  // Espera adicional para asegurar que cargue el DOM y scripts
+  await page.waitForTimeout(2000);
+
+  const loginButton = await page.waitForSelector('button[onclick="loginWithEmailAndPassword()"]', { timeout: 15000 });
+  await loginButton.click();
+
   await page.waitForSelector('#loggedoutDiv', { state: 'detached', timeout: 15000 });
-  await page.waitForSelector('#ventasMenuButton', { timeout: 15000 });
 
-  // Paso 3: Ir a sección ventas
-  await page.click('#ventasMenuButton');
+  // Paso 2: Ir al menú de ventas
+  await page.waitForTimeout(2000); // espera adicional por si la carga post-login demora
+  const ventasButton = await page.waitForSelector('#ventasMenuButton', { timeout: 15000 });
+  await ventasButton.click();
 
-  // Paso 4: Esperar a que se cargue la tabla
+  // Paso 3: Esperar a que cargue la tabla
+  await page.waitForTimeout(2000); // margen adicional antes del scraping
   await page.waitForSelector('#ventasList tbody tr', { timeout: 15000 });
 
-  // Paso 5: Extraer las filas
+  // Paso 4: Extraer los datos
   const rows = await page.$$eval("#ventasList tbody tr", trs =>
     trs.map(tr => {
       const tds = tr.querySelectorAll("td");
