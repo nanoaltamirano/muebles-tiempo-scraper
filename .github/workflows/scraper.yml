@@ -32,3 +32,10 @@ jobs:
           PASSWORD: ${{ secrets.PASSWORD }}
           GOOGLE_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_CREDENTIALS_BASE64 }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
+
+      - name: Upload screenshot
+          uses: actions/upload-artifact@v4
+          with:
+          name: login-screenshot
+          path: screenshot_login.png
+
