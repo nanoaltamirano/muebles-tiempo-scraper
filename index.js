@@ -25,8 +25,10 @@ async function scrapePedidos() {
   await page.waitForSelector('#ventasMenuButton', { state: 'visible', timeout: 15000 });
 
   // Paso 2: Ir a sección ventas
-  await page.waitForTimeout(5000); // por si hay demora post-login
-  await page.getByRole('button', { name: 'Ventas' }).click();
+  await page.waitForTimeout(10000); // por si hay demora post-login
+  await page.waitForSelector('#ventasMenuButton', { timeout: 15000 });
+  await page.click('#ventasMenuButton');
+
 
   // Paso 3: Esperar tabla
   await page.waitForTimeout(8000);
