@@ -4,7 +4,11 @@ import { google } from 'googleapis';
 import playwright from 'playwright';
 
 const SHEET_ID = process.env.SHEET_ID;
-const GOOGLE_SERVICE_CREDENTIALS = JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64').toString('utf-8'));
+const GOOGLE_SERVICE_CREDENTIALS = JSON.parse(
+  Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64')
+    .toString('utf-8')
+    .replace(/\\\\n/g, '\n') // 🔥 clave para desescapar bien los \n
+);
 const EMAIL = process.env.EMAIL;
 const PASSWORD = process.env.PASSWORD;
 
