@@ -29,15 +29,15 @@ async function scrapePedidos() {
     trs.map(tr => {
       const tds = Array.from(tr.querySelectorAll("td"));
       return {
-        "Fecha creacion": tds[0]?.innerText.trim() || "",
+        "Fecha": tds[0]?.innerText.trim() || "",
         "Codigo": tds[2]?.innerText.trim() || "",
         "Cliente": tds[3]?.innerText.trim() || "",
         "Producto": tds[4]?.innerText.trim() || "",
         "Total": tds[5]?.innerText.trim() || "",
         "Saldo": tds[6]?.innerText.trim() || "",
         "Estado": tds[7]?.innerText.trim() || "",
-        "Promesa entrega": tds[8]?.innerText.trim() || "",
-        "Entrega coordinada": tds[9]?.innerText.trim() || ""
+        "Promesa": tds[8]?.innerText.trim() || "",
+        "Coordinada": tds[9]?.innerText.trim() || ""
       };
     })
   );
@@ -54,18 +54,15 @@ async function updateSheet(data) {
 
   const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
 
-  // Obtener encabezados
   const headerRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: 'A1:Z1',
   });
-
-  const headers = headerRes.data.values?.[0] || [];
-  const codigoIndex = headers.indexOf("Codigo");
+  const headers = headerRes.data.values[0];
   const estadoIndex = headers.indexOf("Estado");
-  const coordinadaIndex = headers.indexOf("Entrega coordinada");
-
-  if (codigoIndex === -1) throw new Error("No se encontró el header 'Codigo'");
+  const coordinadaIndex = headers.indexOf("Coordinada");
+  const codigoIndex = headers.indexOf("Codigo");
+  const tieneUltimaActualizacion = headers.includes("Ultima actualizacion");
 
   const sheet = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
@@ -86,19 +83,17 @@ async function updateSheet(data) {
     const codigo = row["Codigo"];
     const existingRow = map[codigo];
 
-    const enrichedRow = headers.map(header =>
-      header === "Ultima actualizacion" ? now : (row[header] ?? "")
+    const enrichedRow = headers.map(h =>
+      h === "Ultima actualizacion" ? now : (row[h] ?? "")
     );
 
     if (!existingRow) {
       toInsert.push(enrichedRow);
     } else {
-      const estadoAntiguo = existingRow[estadoIndex] ?? "";
-      const entregaAntigua = existingRow[coordinadaIndex] ?? "";
-      const estadoNuevo = row["Estado"];
-      const entregaNueva = row["Entrega coordinada"];
+      const estadoAntiguo = existingRow[estadoIndex];
+      const entregaAntigua = existingRow[coordinadaIndex];
 
-      if (estadoAntiguo !== estadoNuevo || entregaAntigua !== entregaNueva) {
+      if (estadoAntiguo !== row["Estado"] || entregaAntigua !== row["Coordinada"]) {
         const rowIndex = existing.findIndex(r => r[codigoIndex] === codigo);
         toUpdate.push({ rowNumber: rowIndex + 2, values: enrichedRow });
       }
