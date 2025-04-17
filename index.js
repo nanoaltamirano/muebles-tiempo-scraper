@@ -4,8 +4,7 @@ import playwright from 'playwright';
 
 const SHEET_ID = process.env.SHEET_ID;
 const rawCredentials = Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64').toString('utf-8');
-const cleanedCredentials = rawCredentials.replace(/\\n/g, '\n'); // importante: escapado correcto
-const GOOGLE_SERVICE_CREDENTIALS = JSON.parse(cleanedCredentials);
+const GOOGLE_SERVICE_CREDENTIALS = JSON.parse(rawCredentials);
 const EMAIL = process.env.EMAIL;
 const PASSWORD = process.env.PASSWORD;
 
@@ -19,66 +18,83 @@ async function scrapePedidos() {
   await page.fill('#loggedoutPass', PASSWORD);
   await page.click('button[onclick="loginWithEmailAndPassword()"]');
 
-  // Paso 2: Esperar a que se complete el login
+  // Paso 2: Esperar que desaparezca login y aparezca el botón de ventas
   await page.waitForSelector('#loggedoutDiv', { state: 'detached', timeout: 15000 });
+  await page.waitForSelector('#ventasMenuButton', { timeout: 15000 });
 
-  // Paso 3: Ir al menú de Ventas
-  await page.waitForSelector('#ventasMenuButton');
+  // Paso 3: Ir a sección ventas
   await page.click('#ventasMenuButton');
 
-  // Paso 4: Esperar a que aparezca la tabla
-  await page.waitForSelector('#ventasList tbody tr');
+  // Paso 4: Esperar a que se cargue la tabla
+  await page.waitForSelector('#ventasList tbody tr', { timeout: 15000 });
 
-  // Paso 5: Extraer filas de la tabla
-  const rows = await page.$$eval('#ventasList tbody tr', trs =>
+  // Paso 5: Extraer las filas
+  const rows = await page.$$eval("#ventasList tbody tr", trs =>
     trs.map(tr => {
-      const tds = tr.querySelectorAll('td');
-      return {
-        fecha_creacion: tds[0]?.innerText.trim(),
-        codigo_orden: tds[2]?.innerText.trim(),
-        nombre_cliente: tds[3]?.innerText.trim(),
-        productos: tds[4]?.innerText.trim(),
-        estado: tds[6]?.innerText.trim(),
-        entrega_comprometida: tds[7]?.innerText.trim(),
-        entrega_coordinada: tds[8]?.innerText.trim()
-      };
-    })
+      const tds = tr.querySelectorAll("td");
+      if (tds.length >= 8) {
+        return {
+          fecha: tds[0].innerText.trim(),
+          codigo: tds[2].innerText.trim(),
+          cliente: tds[3].innerText.trim(),
+          producto: tds[4].innerText.trim(),
+          estado: tds[5].innerText.trim(),
+          fechaPrometida: tds[6].innerText.trim(),
+          entregaCoordinada: tds[7].innerText.trim()
+        };
+      }
+    }).filter(Boolean)
   );
 
-  console.log(`Total de registros obtenidos: ${rows.length}`);
+  await browser.close();
+  return rows;
+}
 
-  // Paso 6: Subir a Google Sheets
+async function updateSheet(data) {
   const auth = new google.auth.GoogleAuth({
     credentials: GOOGLE_SERVICE_CREDENTIALS,
     scopes: ['https://www.googleapis.com/auth/spreadsheets']
   });
 
-  const sheets = google.sheets({ version: 'v4', auth });
+  const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
 
-  // Limpiar antes de escribir (opcional)
-  await sheets.spreadsheets.values.clear({
+  const sheet = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'Sheet1!A2:G'
+    range: 'A2:G1000',
   });
 
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SHEET_ID,
-    range: 'Sheet1!A2:G',
-    valueInputOption: 'RAW',
-    requestBody: {
-      values: rows.map(r => [
-        r.fecha_creacion,
-        r.codigo_orden,
-        r.nombre_cliente,
-        r.productos,
-        r.estado,
-        r.entrega_comprometida,
-        r.entrega_coordinada
-      ])
-    }
-  });
+  const existing = sheet.data.values || [];
+  const map = Object.fromEntries(existing.map(r => [r[1], r]));
 
-  await browser.close();
+  const updated = data.map(row => [
+    row.fecha,
+    row.codigo,
+    row.cliente,
+    row.producto,
+    row.estado,
+    row.fechaPrometida,
+    row.entregaCoordinada
+  ]);
+
+  const final = updated.map(row => {
+    const existing = map[row[1]];
+    if (!existing) return row;
+    if (
+      existing[4] !== row[4] || // estado
+      existing[6] !== row[6]    // entrega coordinada
+    ) return row;
+  }).filter(Boolean);
+
+  if (final.length > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `A2:G${final.length + 1}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: final },
+    });
+  }
 }
 
-scrapePedidos().catch(console.error);
+scrapePedidos()
+  .then(updateSheet)
+  .catch(console.error);
