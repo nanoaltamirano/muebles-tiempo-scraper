@@ -17,6 +17,7 @@ async function scrapePedidos() {
   await page.goto("https://muebles-tiempo.web.app/");
   await page.fill('input[type="email"]', EMAIL);
   await page.fill('input[type="password"]', PASSWORD);
+  await page.screenshot({ path: 'screenshot_login.png', fullPage: true });
   await page.click('button[type="submit"]');
   await page.waitForNavigation({ waitUntil: "networkidle" });
 
