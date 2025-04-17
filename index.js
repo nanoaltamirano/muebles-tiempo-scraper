@@ -16,40 +16,25 @@ async function scrapePedidos() {
   await page.goto("https://muebles-tiempo.web.app/");
   await page.fill('#loggedoutEmail', EMAIL);
   await page.fill('#loggedoutPass', PASSWORD);
-  await page.waitForTimeout(5000); // esperar que cargue el DOM
-  
-  // Ingresar (por texto visible)
+  await page.waitForTimeout(5000);
   await page.getByRole('button', { name: 'Ingresar' }).click();
-
-  // Esperar a que desaparezca la vista de login
   await page.waitForSelector('#ventasMenuButton', { state: 'visible', timeout: 15000 });
 
   // Paso 2: Ir a sección ventas
-  await page.waitForTimeout(10000); // por si hay demora post-login
+  await page.waitForTimeout(10000);
   await page.waitForSelector('#ventasMenuButton', { timeout: 15000 });
   await page.click('#ventasMenuButton');
-
 
   // Paso 3: Esperar tabla
   await page.waitForTimeout(8000);
   await page.waitForSelector('#ventasList tbody tr', { timeout: 15000 });
 
-  // Paso 4: Extraer filas
+  // Paso 4: Extraer TODAS las columnas visibles
   const rows = await page.$$eval("#ventasList tbody tr", trs =>
     trs.map(tr => {
-      const tds = tr.querySelectorAll("td");
-      if (tds.length >= 8) {
-        return {
-          fecha: tds[0].innerText.trim(),
-          codigo: tds[2].innerText.trim(),
-          cliente: tds[3].innerText.trim(),
-          producto: tds[4].innerText.trim(),
-          estado: tds[5].innerText.trim(),
-          fechaPrometida: tds[6].innerText.trim(),
-          entregaCoordinada: tds[7].innerText.trim()
-        };
-      }
-    }).filter(Boolean)
+      const tds = Array.from(tr.querySelectorAll("td"));
+      return tds.map(td => td.innerText.trim());
+    })
   );
 
   await browser.close();
@@ -66,37 +51,53 @@ async function updateSheet(data) {
 
   const sheet = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'A2:G1000',
+    range: 'A2:Z1000',
   });
 
   const existing = sheet.data.values || [];
-  const map = Object.fromEntries(existing.map(r => [r[1], r]));
+  const map = Object.fromEntries(existing.map(r => [r[2], r])); // clave: código (columna C)
 
-  const updated = data.map(row => [
-    row.fecha,
-    row.codigo,
-    row.cliente,
-    row.producto,
-    row.estado,
-    row.fechaPrometida,
-    row.entregaCoordinada
-  ]);
+  const now = new Date().toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires"
+  });
 
-  const final = updated.map(row => {
-    const existing = map[row[1]];
-    if (!existing) return row;
-    if (
-      existing[4] !== row[4] || // estado
-      existing[6] !== row[6]    // entrega coordinada
-    ) return row;
-  }).filter(Boolean);
+  const toUpdate = [];
+  const toInsert = [];
 
-  if (final.length > 0) {
+  for (const row of data) {
+    const codigo = row[2];
+    const existingRow = map[codigo];
+    const enrichedRow = [...row, now];
+
+    if (!existingRow) {
+      toInsert.push(enrichedRow);
+    } else {
+      const estadoAntiguo = existingRow[7];
+      const entregaAntigua = existingRow[9];
+
+      if (estadoAntiguo !== row[7] || entregaAntigua !== row[9]) {
+        const rowIndex = existing.findIndex(r => r[2] === codigo);
+        toUpdate.push({ rowNumber: rowIndex + 2, values: enrichedRow });
+      }
+    }
+  }
+
+  for (const u of toUpdate) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `A2:G${final.length + 1}`,
+      range: `A${u.rowNumber}:Z${u.rowNumber}`,
       valueInputOption: "USER_ENTERED",
-      requestBody: { values: final },
+      requestBody: { values: [u.values] },
+    });
+  }
+
+  if (toInsert.length > 0) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'A2',
+      valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: { values: toInsert },
     });
   }
 }
