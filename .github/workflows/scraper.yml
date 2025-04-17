@@ -1,8 +1,9 @@
-name: Run scraper manually
+name: Run scraper daily
 
 on:
+  schedule:
+    - cron: '0 7 * * *' # todos los días a las 04:00 AM Argentina (07:00 UTC)
   workflow_dispatch:
-
 
 jobs:
   run-scraper:
@@ -31,12 +32,3 @@ jobs:
           PASSWORD: ${{ secrets.PASSWORD }}
           GOOGLE_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_CREDENTIALS_BASE64 }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
-
-      - name: Upload screenshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: login-screenshot
-          path: screenshot_login.png
-
-
-
