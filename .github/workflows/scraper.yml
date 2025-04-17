@@ -33,8 +33,9 @@ jobs:
           SHEET_ID: ${{ secrets.SHEET_ID }}
 
       - name: Upload screenshot
-          uses: actions/upload-artifact@v4
-          with:
+        uses: actions/upload-artifact@v4
+        with:
           name: login-screenshot
           path: screenshot_login.png
+
 
