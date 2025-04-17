@@ -22,7 +22,7 @@ async function scrapePedidos() {
   await page.getByRole('button', { name: 'Ingresar' }).click();
 
   // Esperar a que desaparezca la vista de login
-  await page.waitForSelector('#loggedoutDiv', { state: 'detached', timeout: 15000 });
+  await page.waitForSelector('#ventasMenuButton', { state: 'visible', timeout: 15000 });
 
   // Paso 2: Ir a sección ventas
   await page.waitForTimeout(5000); // por si hay demora post-login
