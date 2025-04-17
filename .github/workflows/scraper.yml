@@ -32,3 +32,15 @@ jobs:
           PASSWORD: ${{ secrets.PASSWORD }}
           GOOGLE_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_CREDENTIALS_BASE64 }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 1,
+              body: "⚠️ El scraper falló hoy a las 04:00 AM. Verificá el workflow para más info: https://github.com/${context.repo.owner}/${context.repo.repo}/actions"
+            })
