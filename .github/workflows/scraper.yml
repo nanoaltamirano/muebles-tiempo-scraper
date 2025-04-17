@@ -1,9 +1,8 @@
-name: Run scraper daily
+name: Run scraper manually
 
 on:
-  schedule:
-    - cron: "0 9 * * *"  # Corre todos los días a las 9:00 UTC
-  workflow_dispatch:     # Permite correrlo manualmente también
+  workflow_dispatch:
+
 
 jobs:
   run-scraper:
