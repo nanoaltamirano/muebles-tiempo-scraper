@@ -12,6 +12,7 @@ async function scrapePedidos() {
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage();
 
+  // Paso 1: Login
   await page.goto("https://muebles-tiempo.web.app/");
   await page.fill('#loggedoutEmail', EMAIL);
   await page.fill('#loggedoutPass', PASSWORD);
@@ -19,17 +20,29 @@ async function scrapePedidos() {
   await page.getByRole('button', { name: 'Ingresar' }).click();
   await page.waitForSelector('#ventasMenuButton', { state: 'visible', timeout: 15000 });
 
+  // Paso 2: Ir a sección ventas
   await page.waitForTimeout(10000);
-  await page.waitForSelector('#ventasMenuButton', { timeout: 15000 });
   await page.click('#ventasMenuButton');
 
+  // Paso 3: Esperar tabla
   await page.waitForTimeout(8000);
   await page.waitForSelector('#ventasList tbody tr', { timeout: 15000 });
 
+  // Paso 4: Mapear columnas visibles manualmente
   const rows = await page.$$eval("#ventasList tbody tr", trs =>
     trs.map(tr => {
       const tds = Array.from(tr.querySelectorAll("td"));
-      return tds.map(td => td.innerText.trim());
+      return {
+        fecha: tds[0]?.innerText.trim() || "",
+        codigo: tds[2]?.innerText.trim() || "",
+        cliente: tds[3]?.innerText.trim() || "",
+        producto: tds[4]?.innerText.trim() || "",
+        total: tds[5]?.innerText.trim() || "",
+        saldo: tds[6]?.innerText.trim() || "",
+        estado: tds[7]?.innerText.trim() || "",
+        promesa: tds[8]?.innerText.trim() || "",
+        coordinada: tds[9]?.innerText.trim() || ""
+      };
     })
   );
 
@@ -47,23 +60,11 @@ async function updateSheet(data) {
 
   const sheet = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'A1:Z1000', // incluir cabecera
+    range: 'A2:K1000',
   });
 
-  const allRows = sheet.data.values || [];
-  const headers = allRows[0];
-  const existing = allRows.slice(1);
-
-  // Índices dinámicos según encabezado
-  const codigoIndex = headers.indexOf("Codigo");
-  const estadoIndex = headers.indexOf("Estado");
-  const entregaIndex = headers.indexOf("Entrega coordinada");
-
-  if (codigoIndex === -1 || estadoIndex === -1 || entregaIndex === -1) {
-    throw new Error("No se encontraron los encabezados requeridos en la hoja");
-  }
-
-  const map = Object.fromEntries(existing.map(r => [r[codigoIndex], r]));
+  const existing = sheet.data.values || [];
+  const map = Object.fromEntries(existing.map(r => [r[2], r])); // clave: código (columna C)
 
   const now = new Date().toLocaleString("es-AR", {
     timeZone: "America/Argentina/Buenos_Aires"
@@ -73,19 +74,32 @@ async function updateSheet(data) {
   const toInsert = [];
 
   for (const row of data) {
-    const codigo = row[codigoIndex];
+    const codigo = row.codigo;
+    const enrichedRow = [
+      row.fecha,
+      "", // columna vacía (B)
+      row.codigo,
+      row.cliente,
+      row.producto,
+      row.total,
+      row.saldo,
+      row.estado,
+      row.promesa,
+      row.coordinada,
+      now
+    ];
+
     const existingRow = map[codigo];
-    const enrichedRow = [...row, now];
 
     if (!existingRow) {
       toInsert.push(enrichedRow);
     } else {
-      const estadoAntiguo = existingRow[estadoIndex];
-      const entregaAntigua = existingRow[entregaIndex];
+      const estadoAntiguo = existingRow[7];
+      const entregaAntigua = existingRow[9];
 
-      if (estadoAntiguo !== row[estadoIndex] || entregaAntigua !== row[entregaIndex]) {
-        const rowIndex = existing.findIndex(r => r[codigoIndex] === codigo);
-        toUpdate.push({ rowNumber: rowIndex + 2, values: enrichedRow }); // +2 por header + base 1
+      if (estadoAntiguo !== row.estado || entregaAntigua !== row.coordinada) {
+        const rowIndex = existing.findIndex(r => r[2] === codigo);
+        toUpdate.push({ rowNumber: rowIndex + 2, values: enrichedRow });
       }
     }
   }
@@ -93,7 +107,7 @@ async function updateSheet(data) {
   for (const u of toUpdate) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `A${u.rowNumber}:Z${u.rowNumber}`,
+      range: `A${u.rowNumber}:K${u.rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [u.values] },
     });
