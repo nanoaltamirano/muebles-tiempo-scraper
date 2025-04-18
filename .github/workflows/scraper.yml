@@ -1,8 +1,8 @@
-name: Run scraper every 15 minutes or manually
+name: Run scraper
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # cada 15 minutos (UTC)
+    - cron: '*/3 * * * *'  # cada 15 minutos (UTC)
   workflow_dispatch:        # permite ejecutarlo manualmente
 
 # ⚠️ Cambio menor para forzar activación del cron
