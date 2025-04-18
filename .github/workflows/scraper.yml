@@ -5,6 +5,9 @@ on:
     - cron: '*/15 * * * *'  # cada 15 minutos (UTC)
   workflow_dispatch:        # permite ejecutarlo manualmente
 
+# ⚠️ Cambio menor para forzar activación del cron
+# Última modificación: forzado para registrar el evento schedule
+
 jobs:
   run-scraper:
     runs-on: ubuntu-latest
