@@ -1,9 +1,9 @@
-name: Run scraper daily
+name: Run scraper every 15 minutes or manually
 
 on:
   schedule:
-    - cron: '0 7 * * *' # todos los días a las 04:00 AM Argentina (07:00 UTC)
-  workflow_dispatch:
+    - cron: '*/15 * * * *'  # cada 15 minutos (UTC)
+  workflow_dispatch:        # permite ejecutarlo manualmente
 
 jobs:
   run-scraper:
@@ -42,5 +42,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: 1,
-              body: "⚠️ El scraper falló hoy a las 04:00 AM. Verificá el workflow para más info: https://github.com/${context.repo.owner}/${context.repo.repo}/actions"
+              body: "⚠️ El scraper falló en la última ejecución. Verificá el workflow: https://github.com/${context.repo.owner}/${context.repo.repo}/actions"
             })
