@@ -57,7 +57,7 @@ async function updateSheet(data) {
 
   const headerRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'A1:Z1',
+    range: `${sheetName}!A1:Z1`,
   });
   const headers = headerRes.data.values[0];
   const estadoIndex = headers.indexOf("Estado");
@@ -67,7 +67,7 @@ async function updateSheet(data) {
 
   const sheet = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'A2:Z1000',
+    range: `${sheetName}!A2:Z1000`,
   });
 
   const existing = sheet.data.values || [];
@@ -102,7 +102,7 @@ async function updateSheet(data) {
     }
   }
 
-  // Marcar como "Entregada" las órdenes que ya no aparecen en la tabla de ventas
+  // Marcar como entregadas las órdenes que ya no están visibles en la tabla web
   for (let i = 0; i < existing.length; i++) {
     const row = existing[i];
     const codigo = row[codigoIndex];
@@ -131,7 +131,7 @@ async function updateSheet(data) {
   if (toInsert.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'A2',
+      range: `${sheetName}!A2`,
       valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: toInsert },
