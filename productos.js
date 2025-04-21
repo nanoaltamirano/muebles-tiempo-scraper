@@ -19,9 +19,9 @@ async function scrapeProductos() {
   await page.getByRole('button', { name: 'Ingresar' }).click();
   await page.waitForSelector('text=Productos', { timeout: 15000 });
   await page.click('text=Productos');
-  await page.waitForSelector('#productosListaList tbody tr', { timeout: 15000 });
+  await page.waitForSelector('#productosListaList tbody tr.productosListaListRow', { timeout: 15000 });
 
-  const rows = await page.$$eval('#productosListaList tbody tr', trs =>
+  const rows = await page.$$eval('#productosListaList tbody tr.productosListaListRow', trs =>
     trs.map(tr => {
       const tds = Array.from(tr.querySelectorAll('td'));
       return {
@@ -38,6 +38,9 @@ async function scrapeProductos() {
       };
     })
   );
+
+  console.log("Filas capturadas:", rows.length);
+  console.log(rows);
 
   await browser.close();
   return rows;
