@@ -53,10 +53,11 @@ async function updateSheet(data) {
   });
 
   const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
+  const sheetName = 'Master';
 
   const headerRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'Master!A1:Z1',
+    range: 'A1:Z1',
   });
   const headers = headerRes.data.values[0];
   const estadoIndex = headers.indexOf("Estado");
@@ -66,7 +67,7 @@ async function updateSheet(data) {
 
   const sheet = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'Master!A2:Z1000',
+    range: 'A2:Z1000',
   });
 
   const existing = sheet.data.values || [];
@@ -121,7 +122,7 @@ async function updateSheet(data) {
   for (const u of toUpdate) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `A${u.rowNumber}:Z${u.rowNumber}`,
+      range: `${sheetName}!A${u.rowNumber}:Z${u.rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [u.values] },
     });
@@ -130,7 +131,7 @@ async function updateSheet(data) {
   if (toInsert.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'Master!A2',
+      range: 'A2',
       valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: toInsert },
