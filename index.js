@@ -56,7 +56,7 @@ async function updateSheet(data) {
 
   const headerRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'A1:Z1',
+    range: 'Master!A1:Z1',
   });
   const headers = headerRes.data.values[0];
   const estadoIndex = headers.indexOf("Estado");
@@ -66,7 +66,7 @@ async function updateSheet(data) {
 
   const sheet = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'A2:Z1000',
+    range: 'Master!A2:Z1000',
   });
 
   const existing = sheet.data.values || [];
@@ -130,7 +130,7 @@ async function updateSheet(data) {
   if (toInsert.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'A2',
+      range: 'Master!A2',
       valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: toInsert },
