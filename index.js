@@ -76,6 +76,7 @@ async function updateSheet(data) {
     timeZone: "America/Argentina/Buenos_Aires"
   });
 
+  const scrapedCodigos = data.map(d => d["Codigo"]);
   const toUpdate = [];
   const toInsert = [];
 
@@ -97,6 +98,23 @@ async function updateSheet(data) {
         const rowIndex = existing.findIndex(r => r[codigoIndex] === codigo);
         toUpdate.push({ rowNumber: rowIndex + 2, values: enrichedRow });
       }
+    }
+  }
+
+  // Marcar como "Entregada" las órdenes que ya no aparecen en la tabla de ventas
+  for (let i = 0; i < existing.length; i++) {
+    const row = existing[i];
+    const codigo = row[codigoIndex];
+    const estadoActual = row[estadoIndex];
+
+    if (!scrapedCodigos.includes(codigo) && estadoActual !== "Entregada") {
+      const nuevaFila = [...row];
+      nuevaFila[estadoIndex] = "Entregada";
+      if (tieneUltimaActualizacion) {
+        const fechaIndex = headers.indexOf("Ultima actualizacion");
+        nuevaFila[fechaIndex] = now;
+      }
+      toUpdate.push({ rowNumber: i + 2, values: nuevaFila });
     }
   }
 
