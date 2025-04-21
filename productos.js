@@ -25,16 +25,16 @@ async function scrapeProductos() {
     trs.map(tr => {
       const tds = Array.from(tr.querySelectorAll('td'));
       return {
-        "Fecha venta": tds[1]?.innerText.trim(),
-        "Codigo": tds[2]?.innerText.trim(),
-        "Cantidad": tds[3]?.innerText.trim(),
-        "Producto": tds[4]?.innerText.trim(),
-        "Origen": tds[5]?.innerText.trim(),
-        "Verificado": tds[6]?.innerText.trim(),
-        "Estado": tds[7]?.innerText.trim(),
-        "Tipo proveedor": tds[8]?.innerText.trim(),
-        "Entrega Comprometida": tds[9]?.innerText.trim(),
-        "Estado proveedor": tds[10]?.innerText.trim()
+        "Fecha venta": tds[1]?.innerText.trim() || "",
+        "Codigo": tds[2]?.innerText.trim() || "",
+        "Cantidad": tds[3]?.innerText.trim() || "",
+        "Producto": tds[4]?.innerText.trim() || "",
+        "Origen": tds[5]?.innerText.trim() || "",
+        "Verificado": tds[6]?.innerText.trim() || "",
+        "Estado": tds[7]?.innerText.trim() || "",
+        "Tipo proveedor": tds[8]?.innerText.trim() || "",
+        "Entrega Comprometida": tds[9]?.innerText.trim() || "",
+        "Estado proveedor": tds[10]?.innerText.replace(/\n/g, " | ").trim() || ""
       };
     })
   );
