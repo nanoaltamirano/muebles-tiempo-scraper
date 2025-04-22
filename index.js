@@ -21,7 +21,6 @@ async function scrapePedidos() {
 
   await page.waitForTimeout(10000);
   await page.click('#ventasMenuButton');
-
   await page.waitForTimeout(8000);
   await page.waitForSelector('#ventasList tbody tr', { timeout: 15000 });
 
@@ -63,7 +62,7 @@ async function updateSheet(data) {
   const estadoIndex = headers.indexOf("Estado");
   const coordinadaIndex = headers.indexOf("Coordinada");
   const codigoIndex = headers.indexOf("Codigo");
-  const tieneUltimaActualizacion = headers.includes("Ultima actualizacion");
+  const fechaIndex = headers.indexOf("Ultima actualizacion");
 
   const columnasAEscribir = [
     "Fecha", "Codigo", "Cliente", "Producto", "Total", "Saldo",
@@ -90,15 +89,11 @@ async function updateSheet(data) {
     const codigo = row["Codigo"];
     const existingRow = map[codigo];
 
-    const enrichedRow = headers.map((h, i) => {
-      if (columnasAEscribir.includes(h)) {
-        return h === "Ultima actualizacion" ? now : (row[h] ?? "");
-      } else if (existingRow && existingRow[i] !== undefined) {
-        return existingRow[i];
-      } else {
-        return undefined;
-      }
-    });
+    const enrichedRow = headers.map(h =>
+      columnasAEscribir.includes(h)
+        ? (h === "Ultima actualizacion" ? now : (row[h] ?? ""))
+        : ""
+    );
 
     if (!existingRow) {
       toInsert.push(enrichedRow);
@@ -113,6 +108,7 @@ async function updateSheet(data) {
     }
   }
 
+  // Marcar como entregadas las órdenes que ya no están visibles en la tabla web
   for (let i = 0; i < existing.length; i++) {
     const row = existing[i];
     const codigo = row[codigoIndex];
