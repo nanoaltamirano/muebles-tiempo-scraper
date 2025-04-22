@@ -65,6 +65,11 @@ async function updateSheet(data) {
   const codigoIndex = headers.indexOf("Codigo");
   const tieneUltimaActualizacion = headers.includes("Ultima actualizacion");
 
+  const columnasAEscribir = [
+    "Fecha", "Codigo", "Cliente", "Producto", "Total", "Saldo",
+    "Estado", "Promesa", "Coordinada", "Ultima actualizacion"
+  ];
+
   const sheet = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: `${sheetName}!A2:Z1000`,
@@ -86,7 +91,9 @@ async function updateSheet(data) {
     const existingRow = map[codigo];
 
     const enrichedRow = headers.map(h =>
-      h === "Ultima actualizacion" ? now : (row[h] ?? "")
+      columnasAEscribir.includes(h)
+        ? (h === "Ultima actualizacion" ? now : (row[h] ?? ""))
+        : existingRow?.[headers.indexOf(h)] ?? ""
     );
 
     if (!existingRow) {
