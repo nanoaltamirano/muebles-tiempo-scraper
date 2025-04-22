@@ -90,11 +90,15 @@ async function updateSheet(data) {
     const codigo = row["Codigo"];
     const existingRow = map[codigo];
 
-    const enrichedRow = headers.map((h, i) =>
-      columnasAEscribir.includes(h)
-        ? (h === "Ultima actualizacion" ? now : (row[h] ?? ""))
-        : existingRow?.[i] ?? ""
-    );
+    const enrichedRow = headers.map((h, i) => {
+      if (columnasAEscribir.includes(h)) {
+        return h === "Ultima actualizacion" ? now : (row[h] ?? "");
+      } else if (existingRow && existingRow[i] !== undefined) {
+        return existingRow[i];
+      } else {
+        return undefined;
+      }
+    });
 
     if (!existingRow) {
       toInsert.push(enrichedRow);
