@@ -90,10 +90,10 @@ async function updateSheet(data) {
     const codigo = row["Codigo"];
     const existingRow = map[codigo];
 
-    const enrichedRow = headers.map(h =>
+    const enrichedRow = headers.map((h, i) =>
       columnasAEscribir.includes(h)
         ? (h === "Ultima actualizacion" ? now : (row[h] ?? ""))
-        : existingRow?.[headers.indexOf(h)] ?? ""
+        : existingRow?.[i] ?? ""
     );
 
     if (!existingRow) {
@@ -109,19 +109,17 @@ async function updateSheet(data) {
     }
   }
 
-  // Marcar como entregadas las órdenes que ya no están visibles en la tabla web
   for (let i = 0; i < existing.length; i++) {
     const row = existing[i];
     const codigo = row[codigoIndex];
     const estadoActual = row[estadoIndex];
 
     if (!scrapedCodigos.includes(codigo) && estadoActual !== "Entregada") {
-      const nuevaFila = [...row];
-      nuevaFila[estadoIndex] = "Entregada";
-      if (tieneUltimaActualizacion) {
-        const fechaIndex = headers.indexOf("Ultima actualizacion");
-        nuevaFila[fechaIndex] = now;
-      }
+      const nuevaFila = headers.map((h, j) => {
+        if (h === "Estado") return "Entregada";
+        if (h === "Ultima actualizacion") return now;
+        return row[j] ?? "";
+      });
       toUpdate.push({ rowNumber: i + 2, values: nuevaFila });
     }
   }
