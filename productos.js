@@ -17,9 +17,9 @@ async function scrapeProductos() {
   await page.fill('#loggedoutPass', PASSWORD);
   await page.waitForTimeout(3000);
   await page.getByRole('button', { name: 'Ingresar' }).click();
-  await page.waitForSelector('text=Productos', { timeout: 20000 });
+  await page.waitForSelector('text=Productos', { timeout: 15000 });
   await page.click('text=Productos');
-  await page.waitForSelector('#productosListaList tbody tr.productosListaListRow', { timeout: 20000 });
+  await page.waitForSelector('#productosListaList tbody tr.productosListaListRow', { timeout: 15000 });
 
   const rows = await page.$$eval('#productosListaList tbody tr.productosListaListRow', trs =>
     trs.map(tr => {
@@ -41,6 +41,16 @@ async function scrapeProductos() {
 
   await browser.close();
   return rows;
+}
+
+// Función que convierte índice numérico a letra de columna (ej: 0 => A, 27 => AB)
+function colToLetter(col) {
+  let letter = "";
+  while (col >= 0) {
+    letter = String.fromCharCode(col % 26 + 65) + letter;
+    col = Math.floor(col / 26) - 1;
+  }
+  return letter;
 }
 
 async function updateSheet(data) {
@@ -86,21 +96,22 @@ async function updateSheet(data) {
     const match = existingMap[key];
 
     if (!match) {
-      // Nueva fila completa
+      // Insertar fila nueva completa
       const filaNueva = headers.map(h => {
         if (camposClave.includes(h)) return h === "Ultima actualizacion" ? now : newRow[h] ?? "";
         return newRow[h] ?? "";
       });
       toInsert.push(filaNueva);
     } else {
-      // Actualizar sólo campos clave específicos (sin afectar otras columnas)
+      // Actualizar sólo campos clave específicos
       camposClave.forEach(campo => {
         const colIdx = headers.indexOf(campo);
+        if (colIdx === -1) return; // Evita rangos inválidos
         const valorNuevo = campo === "Ultima actualizacion" ? now : newRow[campo];
         const valorViejo = match.row[colIdx];
-        
+
         if (valorNuevo !== valorViejo) {
-          const letraCol = String.fromCharCode(65 + colIdx);
+          const letraCol = colToLetter(colIdx); // Aquí está la solución al error
           updateRequests.push({
             range: `${sheetName}!${letraCol}${match.index}`,
             values: [[valorNuevo]]
@@ -110,7 +121,7 @@ async function updateSheet(data) {
     }
   });
 
-  // Batch update (solo celdas individuales necesarias, sin pisar otras columnas)
+  // Actualizar celdas individualmente
   if (updateRequests.length > 0) {
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SHEET_ID,
@@ -121,7 +132,7 @@ async function updateSheet(data) {
     });
   }
 
-  // Insertar filas nuevas (completas)
+  // Insertar filas nuevas
   if (toInsert.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
