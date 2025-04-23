@@ -64,17 +64,22 @@ async function updateSheet(data) {
   });
   const existing = existingRes.data.values || [];
 
-  // Build existing map with key: "Codigo|Producto"
   const existingMap = new Map();
+  const codigoIdx = headers.indexOf("Codigo");
+  const productoIdx = headers.indexOf("Producto");
+
   for (let i = 0; i < existing.length; i++) {
     const row = existing[i];
-    const key = `${row[headers.indexOf("Codigo")]}|${row[headers.indexOf("Producto")]}`;
+    const key = `${row[codigoIdx]}|${row[productoIdx]}`;
     existingMap.set(key, { index: i + 2, row });
   }
 
   const now = new Date().toLocaleString("es-AR", {
     timeZone: "America/Argentina/Buenos_Aires"
   });
+
+  const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"];
+  const columnasAEscribir = [...Object.keys(data[0]), "Ultima actualizacion"];
 
   const toUpdate = [];
   const toInsert = [];
@@ -84,22 +89,19 @@ async function updateSheet(data) {
     const match = existingMap.get(key);
 
     const enrichedRow = headers.map(h =>
-      h === "Ultima actualizacion"
-        ? now
-        : newRow.hasOwnProperty(h)
-        ? newRow[h]
+      columnasAEscribir.includes(h)
+        ? (h === "Ultima actualizacion" ? now : (newRow[h] ?? ""))
         : (match?.row[headers.indexOf(h)] ?? "")
     );
 
     if (!match) {
       toInsert.push(enrichedRow);
     } else {
-      const rowChanged = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"].some(field => {
-        const i = headers.indexOf(field);
-        return match.row[i] !== newRow[field];
+      const changed = camposClave.some(campo => {
+        const i = headers.indexOf(campo);
+        return match.row[i] !== newRow[campo];
       });
-
-      if (rowChanged) {
+      if (changed) {
         toUpdate.push({ rowNumber: match.index, values: enrichedRow });
       }
     }
