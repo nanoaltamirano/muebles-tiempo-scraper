@@ -87,6 +87,17 @@ async function updateSheet(data) {
 
   const toInsert = [];
 
+  // Función para convertir índice en letra columna (AA, AB, etc.)
+  function columnToLetter(column) {
+    let temp, letter = '';
+    while (column >= 0) {
+      temp = column % 26;
+      letter = String.fromCharCode(temp + 65) + letter;
+      column = Math.floor(column / 26) - 1;
+    }
+    return letter;
+  }
+
   for (const newRow of data) {
     const key = `${newRow["Codigo"]}|${newRow["Producto"]}`;
     const match = existingMap.get(key);
@@ -115,7 +126,7 @@ async function updateSheet(data) {
 
         for (const [campo, valor] of Object.entries(updates)) {
           const colIndex = headers.indexOf(campo);
-          const range = `${sheetName}!${String.fromCharCode(65 + colIndex)}${match.index}`;
+          const range = `${sheetName}!${columnToLetter(colIndex)}${match.index}`;
           await sheets.spreadsheets.values.update({
             spreadsheetId: SHEET_ID,
             range: range,
