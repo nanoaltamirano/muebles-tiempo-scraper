@@ -52,35 +52,29 @@ async function updateSheet(data) {
   const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
   const sheetName = 'ProductosPorVenta';
 
-  const headerRes = await sheets.spreadsheets.values.get({
+  const headersRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A1:Z1`,
+    range: `${sheetName}!A1:Z1`
   });
-  const headers = headerRes.data.values[0];
-  const codigoIndex = headers.indexOf("Codigo");
-  const productoIndex = headers.indexOf("Producto");
+  const headers = headersRes.data.values[0];
 
-  const columnasAEscribir = [
-    "Fecha venta", "Codigo", "Cantidad", "Producto", "Origen",
-    "Verificado", "Estado", "Tipo proveedor", "Entrega Comprometida", "Estado proveedor", "Ultima actualizacion"
-  ];
-
-  const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"];
-
-  const sheet = await sheets.spreadsheets.values.get({
+  const existingRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A2:Z1000`,
+    range: `${sheetName}!A2:Z1000`
   });
+  const existing = existingRes.data.values || [];
 
-  const existing = sheet.data.values || [];
+  // Build existing map with key: "Codigo|Producto"
   const existingMap = new Map();
   for (let i = 0; i < existing.length; i++) {
     const row = existing[i];
-    const key = `${row[codigoIndex]}|${row[productoIndex]}`;
+    const key = `${row[headers.indexOf("Codigo")]}|${row[headers.indexOf("Producto")]}`;
     existingMap.set(key, { index: i + 2, row });
   }
 
-  const now = new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
+  const now = new Date().toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires"
+  });
 
   const toUpdate = [];
   const toInsert = [];
@@ -89,26 +83,23 @@ async function updateSheet(data) {
     const key = `${newRow["Codigo"]}|${newRow["Producto"]}`;
     const match = existingMap.get(key);
 
-    const enrichedRow = headers.map((h, i) => {
-      if (columnasAEscribir.includes(h)) {
-        return h === "Ultima actualizacion" ? now : (newRow[h] ?? "");
-      } else if (match && match.row[i] !== undefined) {
-        return match.row[i];
-      } else {
-        return "";
-      }
-    });
+    const enrichedRow = headers.map(h =>
+      h === "Ultima actualizacion"
+        ? now
+        : newRow.hasOwnProperty(h)
+        ? newRow[h]
+        : (match?.row[headers.indexOf(h)] ?? "")
+    );
 
     if (!match) {
       toInsert.push(enrichedRow);
     } else {
-      const existingRow = match.row;
-      const needsUpdate = camposClave.some(campo => {
-        const index = headers.indexOf(campo);
-        return existingRow[index] !== newRow[campo];
+      const rowChanged = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"].some(field => {
+        const i = headers.indexOf(field);
+        return match.row[i] !== newRow[field];
       });
 
-      if (needsUpdate) {
+      if (rowChanged) {
         toUpdate.push({ rowNumber: match.index, values: enrichedRow });
       }
     }
@@ -118,7 +109,7 @@ async function updateSheet(data) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `${sheetName}!A${u.rowNumber}:Z${u.rowNumber}`,
-      valueInputOption: "USER_ENTERED",
+      valueInputOption: 'USER_ENTERED',
       requestBody: { values: [u.values] },
     });
   }
@@ -127,8 +118,8 @@ async function updateSheet(data) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: `${sheetName}!A2`,
-      valueInputOption: "USER_ENTERED",
-      insertDataOption: "INSERT_ROWS",
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
       requestBody: { values: toInsert },
     });
   }
