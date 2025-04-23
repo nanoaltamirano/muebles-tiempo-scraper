@@ -52,24 +52,25 @@ async function updateSheet(data) {
   const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
   const sheetName = 'ProductosPorVenta';
 
-  const headerRes = await sheets.spreadsheets.values.get({
+  const headersRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A1:AZ1`,
+    range: `${sheetName}!A1:AZ1`
   });
-  const headers = headerRes.data.values[0];
-  const codigoIndex = headers.indexOf("Codigo");
-  const productoIndex = headers.indexOf("Producto");
+  const headers = headersRes.data.values[0];
+
+  const codigoIdx = headers.indexOf("Codigo");
+  const productoIdx = headers.indexOf("Producto");
   const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"];
 
-  const sheetRes = await sheets.spreadsheets.values.get({
+  const existingRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A2:AZ`,
+    range: `${sheetName}!A2:AZ`
   });
-  const existing = sheetRes.data.values || [];
+  const existing = existingRes.data.values || [];
 
   const existingMap = {};
   existing.forEach((row, index) => {
-    const key = `${row[codigoIndex]}|${row[productoIndex]}`;
+    const key = `${row[codigoIdx]}|${row[productoIdx]}`;
     existingMap[key] = { index: index + 2, row };
   });
 
@@ -77,7 +78,7 @@ async function updateSheet(data) {
     timeZone: "America/Argentina/Buenos_Aires"
   });
 
-  const toUpdate = [];
+  const updates = [];
   const toInsert = [];
 
   data.forEach(newRow => {
@@ -98,20 +99,26 @@ async function updateSheet(data) {
         return existingRow[index] !== newRow[campo];
       });
       if (needsUpdate) {
-        toUpdate.push({ rowNumber: match.index, values: enrichedRow });
+        updates.push({
+          range: `${sheetName}!A${match.index}`,
+          values: [enrichedRow]
+        });
       }
     }
   });
 
-  for (const u of toUpdate) {
-    await sheets.spreadsheets.values.update({
+  // Una única solicitud batch para todos los updates
+  if (updates.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SHEET_ID,
-      range: `${sheetName}!A${u.rowNumber}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values: [u.values] },
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data: updates
+      },
     });
   }
 
+  // Una única solicitud para insertar nuevas filas
   if (toInsert.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
