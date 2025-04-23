@@ -17,9 +17,9 @@ async function scrapeProductos() {
   await page.fill('#loggedoutPass', PASSWORD);
   await page.waitForTimeout(3000);
   await page.getByRole('button', { name: 'Ingresar' }).click();
-  await page.waitForSelector('text=Productos', { timeout: 15000 });
+  await page.waitForSelector('text=Productos', { timeout: 20000 });
   await page.click('text=Productos');
-  await page.waitForSelector('#productosListaList tbody tr.productosListaListRow', { timeout: 15000 });
+  await page.waitForSelector('#productosListaList tbody tr.productosListaListRow', { timeout: 20000 });
 
   const rows = await page.$$eval('#productosListaList tbody tr.productosListaListRow', trs =>
     trs.map(tr => {
