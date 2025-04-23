@@ -52,99 +52,72 @@ async function updateSheet(data) {
   const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
   const sheetName = 'ProductosPorVenta';
 
-  const headersRes = await sheets.spreadsheets.values.get({
+  const headerRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A1:Z1`
+    range: `${sheetName}!A1:AZ1`,
   });
-  const headers = headersRes.data.values[0];
+  const headers = headerRes.data.values[0];
+  const codigoIndex = headers.indexOf("Codigo");
+  const productoIndex = headers.indexOf("Producto");
+  const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"];
 
-  const codigoIdx = headers.indexOf("Codigo");
-  const productoIdx = headers.indexOf("Producto");
-
-  const existingRes = await sheets.spreadsheets.values.get({
+  const sheetRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A2:Z1000`
+    range: `${sheetName}!A2:AZ`,
   });
-  const existing = existingRes.data.values || [];
+  const existing = sheetRes.data.values || [];
 
-  const existingMap = new Map();
-  for (let i = 0; i < existing.length; i++) {
-    const row = existing[i];
-    const key = `${row[codigoIdx]}|${row[productoIdx]}`;
-    existingMap.set(key, { index: i + 2, row });
-  }
+  const existingMap = {};
+  existing.forEach((row, index) => {
+    const key = `${row[codigoIndex]}|${row[productoIndex]}`;
+    existingMap[key] = { index: index + 2, row };
+  });
 
   const now = new Date().toLocaleString("es-AR", {
     timeZone: "America/Argentina/Buenos_Aires"
   });
 
-  const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"];
-  const columnasPermitidas = [
-    "Fecha venta", "Codigo", "Cantidad", "Producto", "Origen",
-    "Verificado", "Estado", "Tipo proveedor", "Entrega Comprometida", 
-    "Estado proveedor", "Ultima actualizacion"
-  ];
-
+  const toUpdate = [];
   const toInsert = [];
 
-  // Función para convertir índice en letra columna (AA, AB, etc.)
-  function columnToLetter(column) {
-    let temp, letter = '';
-    while (column >= 0) {
-      temp = column % 26;
-      letter = String.fromCharCode(temp + 65) + letter;
-      column = Math.floor(column / 26) - 1;
-    }
-    return letter;
-  }
-
-  for (const newRow of data) {
+  data.forEach(newRow => {
     const key = `${newRow["Codigo"]}|${newRow["Producto"]}`;
-    const match = existingMap.get(key);
+    const match = existingMap[key];
+
+    const enrichedRow = headers.map(h => {
+      if (h === "Ultima actualizacion") return now;
+      return newRow[h] ?? "";
+    });
 
     if (!match) {
-      // Nueva fila
-      const filaNueva = headers.map(h => 
-        columnasPermitidas.includes(h) ? (h === "Ultima actualizacion" ? now : (newRow[h] ?? "")) : ""
-      );
-      toInsert.push(filaNueva);
+      toInsert.push(enrichedRow);
     } else {
-      // Actualización específica
-      const updates = {};
-      let rowChanged = false;
-
-      camposClave.forEach(campo => {
-        const idx = headers.indexOf(campo);
-        if (match.row[idx] !== newRow[campo]) {
-          updates[campo] = newRow[campo];
-          rowChanged = true;
-        }
+      const existingRow = match.row;
+      const needsUpdate = camposClave.some(campo => {
+        const index = headers.indexOf(campo);
+        return existingRow[index] !== newRow[campo];
       });
-
-      if (rowChanged) {
-        updates["Ultima actualizacion"] = now;
-
-        for (const [campo, valor] of Object.entries(updates)) {
-          const colIndex = headers.indexOf(campo);
-          const range = `${sheetName}!${columnToLetter(colIndex)}${match.index}`;
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: SHEET_ID,
-            range: range,
-            valueInputOption: 'USER_ENTERED',
-            requestBody: { values: [[valor]] },
-          });
-        }
+      if (needsUpdate) {
+        toUpdate.push({ rowNumber: match.index, values: enrichedRow });
       }
     }
+  });
+
+  for (const u of toUpdate) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${sheetName}!A${u.rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [u.values] },
+    });
   }
 
-  // Insertar todas las filas nuevas juntas al final
   if (toInsert.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: `${sheetName}!A2`,
-      valueInputOption: 'USER_ENTERED',
-      insertDataOption: 'INSERT_ROWS',
+      valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS",
       requestBody: { values: toInsert },
     });
   }
