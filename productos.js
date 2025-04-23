@@ -60,7 +60,7 @@ async function updateSheet(data) {
 
   const codigoIdx = headers.indexOf("Codigo");
   const productoIdx = headers.indexOf("Producto");
-  const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"];
+  const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor", "Ultima actualizacion"];
 
   const existingRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
@@ -78,47 +78,50 @@ async function updateSheet(data) {
     timeZone: "America/Argentina/Buenos_Aires"
   });
 
-  const updates = [];
+  const updateRequests = [];
   const toInsert = [];
 
   data.forEach(newRow => {
     const key = `${newRow["Codigo"]}|${newRow["Producto"]}`;
     const match = existingMap[key];
 
-    const enrichedRow = headers.map(h => {
-      if (h === "Ultima actualizacion") return now;
-      return newRow[h] ?? "";
-    });
-
     if (!match) {
-      toInsert.push(enrichedRow);
-    } else {
-      const existingRow = match.row;
-      const needsUpdate = camposClave.some(campo => {
-        const index = headers.indexOf(campo);
-        return existingRow[index] !== newRow[campo];
+      // Nueva fila completa
+      const filaNueva = headers.map(h => {
+        if (camposClave.includes(h)) return h === "Ultima actualizacion" ? now : newRow[h] ?? "";
+        return newRow[h] ?? "";
       });
-      if (needsUpdate) {
-        updates.push({
-          range: `${sheetName}!A${match.index}`,
-          values: [enrichedRow]
-        });
-      }
+      toInsert.push(filaNueva);
+    } else {
+      // Actualizar sólo campos clave específicos (sin afectar otras columnas)
+      camposClave.forEach(campo => {
+        const colIdx = headers.indexOf(campo);
+        const valorNuevo = campo === "Ultima actualizacion" ? now : newRow[campo];
+        const valorViejo = match.row[colIdx];
+        
+        if (valorNuevo !== valorViejo) {
+          const letraCol = String.fromCharCode(65 + colIdx);
+          updateRequests.push({
+            range: `${sheetName}!${letraCol}${match.index}`,
+            values: [[valorNuevo]]
+          });
+        }
+      });
     }
   });
 
-  // Una única solicitud batch para todos los updates
-  if (updates.length > 0) {
+  // Batch update (solo celdas individuales necesarias, sin pisar otras columnas)
+  if (updateRequests.length > 0) {
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SHEET_ID,
       requestBody: {
         valueInputOption: "USER_ENTERED",
-        data: updates
-      },
+        data: updateRequests
+      }
     });
   }
 
-  // Una única solicitud para insertar nuevas filas
+  // Insertar filas nuevas (completas)
   if (toInsert.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
