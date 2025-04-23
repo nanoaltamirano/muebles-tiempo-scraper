@@ -39,9 +39,6 @@ async function scrapeProductos() {
     })
   );
 
-  console.log("Filas capturadas:", rows.length);
-  console.log(rows);
-
   await browser.close();
   return rows;
 }
@@ -63,6 +60,11 @@ async function updateSheet(data) {
   const codigoIndex = headers.indexOf("Codigo");
   const productoIndex = headers.indexOf("Producto");
 
+  const columnasAEscribir = [
+    "Fecha venta", "Codigo", "Cantidad", "Producto", "Origen",
+    "Verificado", "Estado", "Tipo proveedor", "Entrega Comprometida", "Estado proveedor", "Ultima actualizacion"
+  ];
+
   const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"];
 
   const sheet = await sheets.spreadsheets.values.get({
@@ -72,16 +74,13 @@ async function updateSheet(data) {
 
   const existing = sheet.data.values || [];
   const existingMap = new Map();
-
   for (let i = 0; i < existing.length; i++) {
     const row = existing[i];
     const key = `${row[codigoIndex]}|${row[productoIndex]}`;
     existingMap.set(key, { index: i + 2, row });
   }
 
-  const now = new Date().toLocaleString("es-AR", {
-    timeZone: "America/Argentina/Buenos_Aires"
-  });
+  const now = new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
 
   const toUpdate = [];
   const toInsert = [];
@@ -90,9 +89,15 @@ async function updateSheet(data) {
     const key = `${newRow["Codigo"]}|${newRow["Producto"]}`;
     const match = existingMap.get(key);
 
-    const enrichedRow = headers.map(h =>
-      h === "Ultima actualizacion" ? now : (newRow[h] ?? "")
-    );
+    const enrichedRow = headers.map((h, i) => {
+      if (columnasAEscribir.includes(h)) {
+        return h === "Ultima actualizacion" ? now : (newRow[h] ?? "");
+      } else if (match && match.row[i] !== undefined) {
+        return match.row[i];
+      } else {
+        return "";
+      }
+    });
 
     if (!match) {
       toInsert.push(enrichedRow);
