@@ -58,6 +58,9 @@ async function updateSheet(data) {
   });
   const headers = headersRes.data.values[0];
 
+  const codigoIdx = headers.indexOf("Codigo");
+  const productoIdx = headers.indexOf("Producto");
+
   const existingRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: `${sheetName}!A2:Z1000`
@@ -65,9 +68,6 @@ async function updateSheet(data) {
   const existing = existingRes.data.values || [];
 
   const existingMap = new Map();
-  const codigoIdx = headers.indexOf("Codigo");
-  const productoIdx = headers.indexOf("Producto");
-
   for (let i = 0; i < existing.length; i++) {
     const row = existing[i];
     const key = `${row[codigoIdx]}|${row[productoIdx]}`;
@@ -79,43 +79,55 @@ async function updateSheet(data) {
   });
 
   const camposClave = ["Estado", "Verificado", "Tipo proveedor", "Estado proveedor"];
-  const columnasAEscribir = [...Object.keys(data[0]), "Ultima actualizacion"];
+  const columnasPermitidas = [
+    "Fecha venta", "Codigo", "Cantidad", "Producto", "Origen",
+    "Verificado", "Estado", "Tipo proveedor", "Entrega Comprometida", 
+    "Estado proveedor", "Ultima actualizacion"
+  ];
 
-  const toUpdate = [];
   const toInsert = [];
 
   for (const newRow of data) {
     const key = `${newRow["Codigo"]}|${newRow["Producto"]}`;
     const match = existingMap.get(key);
 
-    const enrichedRow = headers.map(h =>
-      columnasAEscribir.includes(h)
-        ? (h === "Ultima actualizacion" ? now : (newRow[h] ?? ""))
-        : (match?.row[headers.indexOf(h)] ?? "")
-    );
-
     if (!match) {
-      toInsert.push(enrichedRow);
+      // Nueva fila
+      const filaNueva = headers.map(h => 
+        columnasPermitidas.includes(h) ? (h === "Ultima actualizacion" ? now : (newRow[h] ?? "")) : ""
+      );
+      toInsert.push(filaNueva);
     } else {
-      const changed = camposClave.some(campo => {
-        const i = headers.indexOf(campo);
-        return match.row[i] !== newRow[campo];
+      // Actualización específica
+      const updates = {};
+      let rowChanged = false;
+
+      camposClave.forEach(campo => {
+        const idx = headers.indexOf(campo);
+        if (match.row[idx] !== newRow[campo]) {
+          updates[campo] = newRow[campo];
+          rowChanged = true;
+        }
       });
-      if (changed) {
-        toUpdate.push({ rowNumber: match.index, values: enrichedRow });
+
+      if (rowChanged) {
+        updates["Ultima actualizacion"] = now;
+
+        for (const [campo, valor] of Object.entries(updates)) {
+          const colIndex = headers.indexOf(campo);
+          const range = `${sheetName}!${String.fromCharCode(65 + colIndex)}${match.index}`;
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: SHEET_ID,
+            range: range,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values: [[valor]] },
+          });
+        }
       }
     }
   }
 
-  for (const u of toUpdate) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `${sheetName}!A${u.rowNumber}:Z${u.rowNumber}`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [u.values] },
-    });
-  }
-
+  // Insertar todas las filas nuevas juntas al final
   if (toInsert.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
