@@ -18,20 +18,20 @@ async function scrapePedidosProveedor() {
   await page.waitForTimeout(3000);
   await page.getByRole('button', { name: 'Ingresar' }).click();
   
-  await page.waitForTimeout(3000); // espera que cargue después del login
+  await page.waitForTimeout(3000); // esperar carga después de login
 
   // Ir a "Proformas"
   await page.click('#proformasMenuButton');
   await page.waitForTimeout(3000);
 
-  // Ir a "Proformas Pedidas"
-  await page.getByRole('heading', { name: 'Proformas Pedidas' }).click();
+  // Clickear "Proformas Pedidas" para expandir la tabla
+  await page.click('h3.transpButton', { timeout: 15000 });
   await page.waitForTimeout(3000);
 
-  // Esperar que aparezca la tabla
+  // Esperar que aparezca la tabla expandida
   await page.waitForSelector('#proformasPendientesList tbody tr', { timeout: 15000 });
 
-  // Scrapeamos las filas
+  // Scrapear las filas de la tabla
   const rows = await page.$$eval('#proformasPendientesList tbody tr', trs =>
     trs.map(tr => {
       const tds = Array.from(tr.querySelectorAll('td'));
@@ -51,7 +51,7 @@ async function scrapePedidosProveedor() {
   return rows;
 }
 
-// Función para convertir índice a letra de columna (igual que en tu script anterior)
+// Función para convertir índice a letra de columna
 function colToLetter(col) {
   let letter = "";
   while (col >= 0) {
@@ -130,7 +130,7 @@ async function updateSheet(data) {
     }
   });
 
-  // Ahora, detectar los pedidos que desaparecieron (se entregaron)
+  // Detectar pedidos que desaparecieron (entregados)
   Object.keys(existingMap).forEach(key => {
     if (!newKeys.has(key)) {
       const { index, row } = existingMap[key];
