@@ -1,0 +1,34 @@
+name: Run second scraper every 15 minutes
+
+on:
+  schedule:
+    - cron: '*/15 * * * *' # Corre automáticamente cada 15 minutos
+  workflow_dispatch: # También podés correrlo manualmente
+
+jobs:
+  run-second-scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright and dependencies
+        run: |
+          npx playwright install --with-deps
+
+      - name: Run second scraper
+        run: node scraper2.js
+        env:
+          EMAIL: ${{ secrets.EMAIL2 }}
+          PASSWORD: ${{ secrets.PASSWORD2 }}
+          GOOGLE_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_CREDENTIALS_BASE64 }} # usamos el mismo
+          SHEET_ID: ${{ secrets.SHEET_ID_2 }}
