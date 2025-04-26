@@ -24,11 +24,11 @@ async function scrapePedidosProveedor() {
   await page.click('#proformasMenuButton');
   await page.waitForTimeout(3000);
 
-  // Clickear "Proformas Pedidas" para expandir la tabla
-  await page.click('h3.transpButton', { timeout: 15000 });
+  // Ir a "Proformas Pedidas" (el correcto)
+  await page.getByRole('heading', { name: 'Proformas Pedidas' }).click({ timeout: 15000 });
   await page.waitForTimeout(3000);
 
-  // Esperar que aparezca la tabla expandida
+  // Esperar la tabla de proformas pedidas
   await page.waitForSelector('#proformasPendientesList tbody tr', { timeout: 15000 });
 
   // Scrapear las filas de la tabla
