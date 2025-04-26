@@ -39,11 +39,11 @@ async function scrapePedidosProveedor() {
   // Darle un tiempito extra
   await page.waitForTimeout(3000);
 
-  // Ahora sí esperar la tabla donde están los datos
-  await page.waitForSelector('#proformasPendientesList tbody tr', { state: 'attached', timeout: 15000 });
+  // Ahora sí esperar que existan filas
+  await page.waitForSelector('#proformasPedidasDiv tbody tr', { state: 'attached', timeout: 15000 });
 
   // Scrapear las filas de la tabla
-  const rows = await page.$$eval('#proformasPendientesList tbody tr', trs =>
+  const rows = await page.$$eval('#proformasPedidasDiv tbody tr', trs =>
     trs.map(tr => {
       const tds = Array.from(tr.querySelectorAll('td'));
       return {
