@@ -42,7 +42,7 @@ async function scrapePedidosProveedor() {
         "Cantidad": tds[4]?.innerText.trim() || "",
         "Producto": tds[5]?.innerText.trim() || "",
         "Estado": tds[7]?.innerText.trim() || "",
-        "Fecha pedido": tds[8]?.innerText.trim() || ""
+        "Fecha pedido": (tds[8]?.innerText.trim().replace(/^el día\s*/, "") || "")
       };
     })
   );
