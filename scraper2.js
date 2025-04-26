@@ -12,24 +12,30 @@ async function scrapePedidosProveedor() {
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage();
 
+  // Hacer login
   await page.goto("https://muebles-tiempo.web.app/");
   await page.fill('#loggedoutEmail', EMAIL);
   await page.fill('#loggedoutPass', PASSWORD);
   await page.waitForTimeout(3000);
   await page.getByRole('button', { name: 'Ingresar' }).click();
-  
-  await page.waitForTimeout(3000); // esperar carga después de login
+  await page.waitForTimeout(3000);
 
-  // Ir a "Proformas"
+  // Ir al menú "Proformas"
   await page.click('#proformasMenuButton');
   await page.waitForTimeout(3000);
 
-  // Ir a "Proformas Pedidas" (el correcto)
+  // Clickear exactamente "Proformas Pedidas"
   await page.getByRole('heading', { name: 'Proformas Pedidas' }).click({ timeout: 15000 });
+
+  // Esperar que el div que contiene la tabla esté visible
+  await page.waitForSelector('#proformasPedidasDiv', { state: 'visible', timeout: 15000 });
+
+  // Darle un tiempito extra por si tarda en cargar
   await page.waitForTimeout(3000);
 
-  // Esperar la tabla de proformas pedidas
+  // Ahora sí esperar la tabla donde están los datos
   await page.waitForSelector('#proformasPendientesList tbody tr', { timeout: 15000 });
+
 
   // Scrapear las filas de la tabla
   const rows = await page.$$eval('#proformasPendientesList tbody tr', trs =>
