@@ -27,15 +27,20 @@ async function scrapePedidosProveedor() {
   // Clickear exactamente "Proformas Pedidas"
   await page.getByRole('heading', { name: 'Proformas Pedidas' }).click({ timeout: 15000 });
 
-  // Esperar que el div que contiene la tabla esté visible
+  // Esperar que el div de Proformas Pedidas esté visible
   await page.waitForSelector('#proformasPedidasDiv', { state: 'visible', timeout: 15000 });
 
-  // Darle un tiempito extra por si tarda en cargar
+  // Esperar que haya contenido dentro del div (para asegurar que cargó)
+  await page.waitForFunction(() => {
+    const div = document.querySelector('#proformasPedidasDiv');
+    return div && div.innerText.length > 50;
+  }, { timeout: 15000 });
+
+  // Darle un tiempito extra
   await page.waitForTimeout(3000);
 
   // Ahora sí esperar la tabla donde están los datos
   await page.waitForSelector('#proformasPendientesList tbody tr', { timeout: 15000 });
-
 
   // Scrapear las filas de la tabla
   const rows = await page.$$eval('#proformasPendientesList tbody tr', trs =>
