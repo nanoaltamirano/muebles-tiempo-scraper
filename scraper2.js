@@ -40,7 +40,7 @@ async function scrapePedidosProveedor() {
   await page.waitForTimeout(3000);
 
   // Ahora sí esperar la tabla donde están los datos
-  await page.waitForSelector('#proformasPendientesList tbody tr', { timeout: 15000 });
+  await page.waitForSelector('#proformasPendientesList tbody tr', { state: 'attached', timeout: 15000 });
 
   // Scrapear las filas de la tabla
   const rows = await page.$$eval('#proformasPendientesList tbody tr', trs =>
