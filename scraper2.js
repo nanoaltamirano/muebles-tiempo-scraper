@@ -101,7 +101,7 @@ async function updateSheet(data) {
     existingMap[key] = { index: index + 2, row };
   });
 
-  const now = new Date().toLocaleString("es-AR", {
+  const now = new Date().toLocaleDateString("es-AR", {
     timeZone: "America/Argentina/Buenos_Aires"
   });
 
